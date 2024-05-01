@@ -5,18 +5,19 @@ import dev.capslock.scodecexercise.wasm.types.ValueType
 import function.Instruction
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 case class Runtime(
     store: Store,
-    stack: collection.mutable.Stack[Value],
-    callStack: collection.mutable.Stack[Frame],
+    stack: mutable.Stack[Value],
+    callStack: mutable.Stack[Frame],
 )
 
 object Runtime {
   def apply(wasmBinary: WasmBinary): Runtime = {
     val store = Store(wasmBinary)
-    val stack = collection.mutable.Stack.empty[Value]
-    val callStack = collection.mutable.Stack.empty[Frame]
+    val stack = mutable.Stack.empty[Value]
+    val callStack = mutable.Stack.empty[Frame]
     Runtime(store, stack, callStack)
   }
 
@@ -78,7 +79,7 @@ object Runtime {
   }
 
   private def unwindStack(
-      stack: collection.mutable.Stack[Value],
+      stack: mutable.Stack[Value],
       sp: Int,
       arity: Int,
   ) = {
@@ -92,7 +93,7 @@ object Runtime {
   }
 
   private def invoke(runtime: Runtime, func: FuncInst): Option[Value] = {
-    var locals = collection.mutable.Stack.empty[Value]
+    var locals = mutable.Stack.empty[Value]
     for (_ <- func.typ.params.indices) locals.push(runtime.stack.pop())
     println(s"locals: $locals")
 
