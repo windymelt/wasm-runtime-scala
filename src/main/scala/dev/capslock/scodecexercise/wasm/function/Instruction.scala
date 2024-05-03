@@ -16,10 +16,10 @@ enum OpCode(val code: Byte):
 
 object OpCode:
   def fromByte(byte: Byte): OpCode = byte match
-    case 0x0b => End
-    case 0x20 => LocalGet
-    case 0x41 => I32Const
-    case 0x6a => I32Add
+    case End.code => End
+    case LocalGet.code => LocalGet
+    case I32Const.code => I32Const
+    case I32Add.code => I32Add
     case _    => throw new IllegalArgumentException(s"Unknown opcode: $byte")
 
   val codec: Codec[OpCode] = byte.xmap(fromByte, _.code)
