@@ -10,8 +10,5 @@ case class TypeSection(types: Vector[FuncType]) extends SectionPayload
 
 object TypeSection:
   def codecWithSize(size: Int): Codec[TypeSection] =
-    logToStdOut(
-      fixedSizeBytes(size, vectorOfN(Leb128.codecInt, FuncType.codec))
-        .as[TypeSection],
-      "typeSection",
-    )
+    fixedSizeBytes(size, vectorOfN(Leb128.codecInt, FuncType.codec))
+      .as[TypeSection]

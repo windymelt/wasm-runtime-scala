@@ -50,6 +50,13 @@ object Runtime {
         unwindStack(runtime.stack, frame.sp, frame.arity)
         (runtime.stack, runtime.callStack.head)
 
+      case Instruction.Call(funcIdx) =>
+        val func = runtime.store.funcs(funcIdx)
+        println(s"CALL: calling ${funcIdx}")
+        pushFrame(runtime, func)
+        println(s"CALLSTACK(PUSHED): ${runtime.callStack}")
+        return execute(runtime) // little bit hacky.
+
       case Instruction.LocalGet(index) =>
         runtime.stack.push(frame.locals(index))
         (runtime.stack, step(frame))
@@ -63,8 +70,8 @@ object Runtime {
         (runtime.stack, step(frame))
 
       case Instruction.I32Const(x) =>
-         runtime.stack.push(Value.I32(x))
-         (runtime.stack, step(frame))
+        runtime.stack.push(Value.I32(x))
+        (runtime.stack, step(frame))
     }
 
     runtime.callStack.push(newFrame)
@@ -86,7 +93,7 @@ object Runtime {
       for (_ <- 0 to sp) stack.pop()
       stack.push(result)
 
-  private def invoke(runtime: Runtime, func: FuncInst): Option[Value] = {
+  private def pushFrame(runtime: Runtime, func: FuncInst): Unit = {
     val locals = mutable.Stack.empty[Value]
     for (_ <- func.typ.params.indices) locals.push(runtime.stack.pop())
 
@@ -108,11 +115,22 @@ object Runtime {
     )
 
     runtime.callStack.push(frame)
+  }
+
+  private def invoke(runtime: Runtime, func: FuncInst): Option[Value] = {
+    val arity = func.typ.results.size
+    pushFrame(runtime, func)
 
     try {
       execute(runtime)
     } catch {
-      case _: Throwable =>
+      case e: Throwable =>
+        println(s"""CRASH!!! ${e}; ${e
+            .getStackTrace()
+            .map(_.toString())
+            .mkString("\n")}""")
+        println(runtime)
+        println(func)
         cleanup(runtime)
         return None
     }

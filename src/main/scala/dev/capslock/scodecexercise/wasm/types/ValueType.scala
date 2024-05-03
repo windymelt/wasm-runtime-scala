@@ -20,4 +20,4 @@ object ValueType:
     case I64 => 0x7e
 
   val codec: Codec[ValueType] =
-    logToStdOut(byte.xmap(fromByte, toByte), "valueType")
+    byte.xmap(fromByte, toByte)

@@ -13,7 +13,6 @@ class SectionTest extends UnitTest:
         hex"01 04 01 60 00 00".bits // code 01, size 04, ...
 
       val result = Section.codec.decodeValue(section)
-      println(result)
 
       result.require shouldBe Section(
         SectionHeader(SectionCode.TypeSection, 4),

@@ -16,12 +16,11 @@ object Function:
   val codec: Codec[Function] = {
     // Function ::= size, locals*, body*
 
-    val size = logToStdOut(Leb128.codecInt, "Function size")
-    val locals = logToStdOut(
-      vectorOfN(Leb128.codecInt, Leb128.codecInt :: ValueType.codec),
-      "Function locals",
-    )
-    val body = logToStdOut(vector(Instruction.codec), "Function body")
+    val size = Leb128.codecInt
+    val locals =
+      vectorOfN(Leb128.codecInt, Leb128.codecInt :: ValueType.codec)
+
+    val body = vector(Instruction.codec)
 
     variableSizeBytes(size, locals :: body).as[Function]
   }

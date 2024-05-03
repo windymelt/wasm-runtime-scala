@@ -47,6 +47,28 @@ class RuntimeTest extends UnitTest:
       result shouldBe Some(Value.I32(666))
     }
 
+    it("should be able to call CALL") {
+      val wasmBinary = wat2wasm("""
+      | (module
+      |  (func (export "call_doubler") (param i32) (result i32) 
+      |    (local.get 0)
+      |    (call $double)
+      |  )
+      |  (func $double (param i32) (result i32)
+      |    (local.get 0)
+      |    (local.get 0)
+      |    i32.add
+      |  )
+      |)
+      |""".stripMargin)
+
+      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val runtime = Runtime(wasm)
+
+      val result = Runtime.call(runtime, "call_doubler", Vector(Value.I32(42)))
+      result shouldBe Some(Value.I32(84))
+    }
+
     it("should behave safely when calling non-existent function") {
       val wasmBinary = wat2wasm("""
           |(module
@@ -58,7 +80,11 @@ class RuntimeTest extends UnitTest:
       val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
-      val result = Runtime.call(runtime, "supercalifragilisticexpialidocious", Vector.empty)
+      val result = Runtime.call(
+        runtime,
+        "supercalifragilisticexpialidocious",
+        Vector.empty,
+      )
       result shouldBe None
     }
   }

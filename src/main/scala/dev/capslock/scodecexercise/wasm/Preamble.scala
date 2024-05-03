@@ -10,7 +10,4 @@ object Preamble:
   // version should be encodec in little endian
   val codec: Codec[Preamble] =
     // \0asm version
-    logToStdOut(
-      "preamble" | (constant(hex"0061 736d") :: uint32L).as[Preamble],
-      "preamble",
-    )
+    "preamble" | (constant(hex"0061 736d") :: uint32L).as[Preamble]
