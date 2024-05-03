@@ -24,6 +24,11 @@ object Section:
         s"codeSection($size bytes)" | sections.CodeSection
           .codecWithSize(size.toInt)
           .upcast[SectionPayload]
+
+      case header @ SectionHeader(SectionCode.ExportSection, size) =>
+        s"exportSection($size bytes)" | sections.ExportSection
+          .codecWithSize(size.toInt)
+          .upcast[SectionPayload]
     }
     .as[Section]
 
