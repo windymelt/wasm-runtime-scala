@@ -14,6 +14,7 @@ object SectionCode:
   import scodec.codecs.*
 
   def fromId(id: Int): Option[SectionCode] = id match
+    case 0   => None // Custom Section. TBD
     case 1   => Some(TypeSection)
     case 2   => Some(ImportSection)
     case 3   => Some(FunctionSection)
