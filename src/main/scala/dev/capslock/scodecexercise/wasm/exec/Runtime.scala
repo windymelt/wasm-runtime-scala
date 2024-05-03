@@ -53,8 +53,7 @@ object Runtime {
 
       case Instruction.LocalGet(index) =>
         runtime.stack.push(frame.locals(index))
-        val newFrame = frame.copy(pc = frame.pc + 1)
-        (runtime.stack, newFrame)
+        (runtime.stack, step(frame))
 
       case Instruction.I32Add =>
         val (a, b) = (
@@ -62,19 +61,19 @@ object Runtime {
           runtime.stack.pop().asInstanceOf[Value.I32],
         )
         runtime.stack.push(Value.I32(a.value + b.value))
-        val newFrame = frame.copy(pc = frame.pc + 1)
-        (runtime.stack, newFrame)
+        (runtime.stack, step(frame))
 
       case Instruction.I32Const(x) =>
          runtime.stack.push(Value.I32(x))
-         val newFrame = frame.copy(pc = frame.pc + 1)
-         (runtime.stack, newFrame)
+         (runtime.stack, step(frame))
     }
 
     runtime.callStack.push(newFrame)
 
     execute(runtime.copy(stack = newStack))
   }
+
+  private def step(frame: Frame) = frame.copy(pc = frame.pc + 1)
 
   private def unwindStack(
       stack: mutable.Stack[Value],
