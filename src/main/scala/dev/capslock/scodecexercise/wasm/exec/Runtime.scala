@@ -24,7 +24,7 @@ object Runtime {
       runtime: Runtime,
       funcName: String,
       args: Vector[Value] = Vector.empty,
-  ): Option[Value] = {
+  ): Option[Value] =
     for
       exported <- runtime.store.module.exports.get(funcName)
       funcIdx <- exported.desc match
@@ -34,7 +34,6 @@ object Runtime {
       _ = runtime.stack.pushAll(args)
       result <- invoke(runtime, func)
     yield result
-  }
 
   @tailrec
   def execute(runtime: Runtime): Unit = {
