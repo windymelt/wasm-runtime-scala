@@ -20,10 +20,20 @@ object Runtime {
     Runtime(Store(wasmBinary), stack, callStack)
   }
 
-  def call(runtime: Runtime, idx: Int, args: Vector[Value]): Option[Value] = {
-    val func = runtime.store.funcs(idx)
-    runtime.stack.pushAll(args)
-    invoke(runtime, func)
+  def call(
+      runtime: Runtime,
+      funcName: String,
+      args: Vector[Value],
+  ): Option[Value] = {
+    for
+      exported <- runtime.store.module.exports.get(funcName)
+      funcIdx <- exported.desc match
+        case dev.capslock.scodecexercise.wasm.types.ExportDesc.Func(idx) =>
+          Some(idx)
+      func = runtime.store.funcs(funcIdx)
+      _ = runtime.stack.pushAll(args)
+      result <- invoke(runtime, func)
+    yield result
   }
 
   @tailrec

@@ -9,7 +9,7 @@ class RuntimeTest extends UnitTest:
     it("should do add") {
       val wasmBinary = wat2wasm("""
           |(module
-          |  (func (param i32 i32) (result i32)
+          |  (func (export "add") (param i32 i32) (result i32)
           |    (local.get 0)
           |    (local.get 1)
           |    i32.add
@@ -27,7 +27,7 @@ class RuntimeTest extends UnitTest:
       )
 
       cases.foreach { case (args, expected) =>
-        val result = Runtime.call(runtime, 0, args)
+        val result = Runtime.call(runtime, "add", args)
         result shouldBe Some(expected)
       }
     }
