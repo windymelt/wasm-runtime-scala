@@ -88,15 +88,15 @@ object Runtime {
       stack.push(result)
 
   private def invoke(runtime: Runtime, func: FuncInst): Option[Value] = {
-    var locals = mutable.Stack.empty[Value]
+    val locals = mutable.Stack.empty[Value]
     for (_ <- func.typ.params.indices) locals.push(runtime.stack.pop())
 
     for (local <- func.code.locals) {
       local match
         case ValueType.I32 =>
-          locals = locals :+ Value.I32(0)
+          locals.push(Value.I32(0))
         case ValueType.I64 =>
-          locals = locals :+ Value.I64(0)
+          locals.push(Value.I64(0))
     }
 
     val arity = func.typ.results.size
