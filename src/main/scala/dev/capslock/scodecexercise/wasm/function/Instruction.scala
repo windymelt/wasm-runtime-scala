@@ -10,22 +10,25 @@ import types.ValueType
 
 enum OpCode(val code: Byte):
   case End extends OpCode(0x0b)
+  case Call extends OpCode(0x10)
   case LocalGet extends OpCode(0x20)
   case I32Const extends OpCode(0x41)
   case I32Add extends OpCode(0x6a)
 
 object OpCode:
   def fromByte(byte: Byte): OpCode = byte match
-    case End.code => End
+    case End.code      => End
+    case Call.code     => Call
     case LocalGet.code => LocalGet
     case I32Const.code => I32Const
-    case I32Add.code => I32Add
-    case _    => throw new IllegalArgumentException(s"Unknown opcode: $byte")
+    case I32Add.code   => I32Add
+    case _ => throw new IllegalArgumentException(s"Unknown opcode: $byte")
 
   val codec: Codec[OpCode] = byte.xmap(fromByte, _.code)
 
 enum Instruction(val code: OpCode):
   case End extends Instruction(OpCode.End)
+  case Call(funcIdx: Int) extends Instruction(OpCode.Call)
   case LocalGet(index: Int) extends Instruction(OpCode.LocalGet)
   case I32Const(i32: Int) extends Instruction(OpCode.I32Const)
   case I32Add extends Instruction(OpCode.I32Add)
@@ -35,6 +38,11 @@ object Instruction:
     override def sizeBound: SizeBound = SizeBound.unknown
     override def encode(value: Instruction): Attempt[BitVector] = value match
       case Instruction.End => OpCode.codec.encode(OpCode.End)
+      case Instruction.Call(funcIdx) =>
+        for
+          op <- OpCode.codec.encode(OpCode.Call)
+          func <- Leb128.codecInt.encode(funcIdx)
+        yield op ++ func
       case Instruction.LocalGet(index) =>
         OpCode.codec
           .encode(OpCode.LocalGet)
@@ -53,6 +61,10 @@ object Instruction:
         opCode.value match
           case OpCode.End =>
             Attempt.successful(DecodeResult(Instruction.End, BitVector.empty))
+          case OpCode.Call =>
+            Leb128.codecInt.decode(opCode.remainder).map { funcIdx =>
+              DecodeResult(Instruction.Call(funcIdx.value), BitVector.empty)
+            }
           case OpCode.LocalGet =>
             Leb128.codecInt.decode(opCode.remainder).map { index =>
               DecodeResult(Instruction.LocalGet(index.value), index.remainder)
