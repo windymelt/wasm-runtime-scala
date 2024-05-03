@@ -6,7 +6,7 @@ import scodec.bits.BitVector
 
 class RuntimeTest extends UnitTest:
   describe("Runtime") {
-    it("should do add") {
+    it("should call exported function add") {
       val wasmBinary = wat2wasm("""
           |(module
           |  (func (export "add") (param i32 i32) (result i32)
@@ -30,5 +30,35 @@ class RuntimeTest extends UnitTest:
         val result = Runtime.call(runtime, "add", args)
         result shouldBe Some(expected)
       }
+    }
+
+    it("should be able to call i32.const") {
+      val wasmBinary = wat2wasm("""
+          |(module
+          |  (func (export "satanist") (result i32)
+          |    i32.const 666
+          |  )
+          |)
+          |""".stripMargin)
+      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val runtime = Runtime(wasm)
+
+      val result = Runtime.call(runtime, "satanist", Vector.empty)
+      result shouldBe Some(Value.I32(666))
+    }
+
+    it("should behave safely when calling non-existent function") {
+      val wasmBinary = wat2wasm("""
+          |(module
+          |  (func (export "satanist") (result i32)
+          |    i32.const 666
+          |  )
+          |)
+          |""".stripMargin)
+      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val runtime = Runtime(wasm)
+
+      val result = Runtime.call(runtime, "supercalifragilisticexpialidocious", Vector.empty)
+      result shouldBe None
     }
   }

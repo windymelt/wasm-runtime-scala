@@ -23,7 +23,7 @@ object Runtime {
   def call(
       runtime: Runtime,
       funcName: String,
-      args: Vector[Value],
+      args: Vector[Value] = Vector.empty,
   ): Option[Value] = {
     for
       exported <- runtime.store.module.exports.get(funcName)
@@ -64,6 +64,11 @@ object Runtime {
         runtime.stack.push(Value.I32(a.value + b.value))
         val newFrame = frame.copy(pc = frame.pc + 1)
         (runtime.stack, newFrame)
+
+      case Instruction.I32Const(x) =>
+         runtime.stack.push(Value.I32(x))
+         val newFrame = frame.copy(pc = frame.pc + 1)
+         (runtime.stack, newFrame)
     }
 
     runtime.callStack.push(newFrame)
