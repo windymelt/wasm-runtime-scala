@@ -1,7 +1,7 @@
 package dev.capslock.scodecexercise.wasm
 package exec
 
-import dev.capslock.scodecexercise.wasm.types.ValueType
+import types.ValueType
 import function.Instruction
 
 import scala.annotation.tailrec
@@ -28,7 +28,7 @@ object Runtime {
     for
       exported <- runtime.store.module.exports.get(funcName)
       funcIdx <- exported.desc match
-        case dev.capslock.scodecexercise.wasm.types.ExportDesc.Func(idx) =>
+        case types.ExportDesc.Func(idx) =>
           Some(idx)
       func = runtime.store.funcs(funcIdx)
       _ = runtime.stack.pushAll(args)
