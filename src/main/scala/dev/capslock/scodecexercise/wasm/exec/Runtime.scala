@@ -6,11 +6,13 @@ import function.Instruction
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.util.Try
 
 case class Runtime(
     store: Store,
     stack: mutable.Stack[Value],
     callStack: mutable.Stack[Frame],
+    imports: Import,
 ) {
   override def toString: String =
     s"""*** Runtime ***
@@ -19,13 +21,27 @@ case class Runtime(
        |  callStack:
        |  ${callStack.zipWithIndex.mkString("\n    ")}
        |""".stripMargin
+
+  def withImport(
+      moduleName: String,
+      funcName: String,
+      func: ImportFunc,
+  ): Try[Runtime] =
+    val module = imports.get(moduleName)
+    module match
+      case Some(m) =>
+        Try(
+          copy(imports = imports + (moduleName -> (m + (funcName -> func)))),
+        ) // TODO: overwrite check
+      case None =>
+        Try(copy(imports = imports + (moduleName -> Map(funcName -> func))))
 }
 
 object Runtime {
   def apply(wasmBinary: WasmBinary): Runtime = {
     val (stack, callStack) =
       (mutable.Stack.empty[Value], mutable.Stack.empty[Frame])
-    Runtime(Store(wasmBinary), stack, callStack)
+    Runtime(Store(wasmBinary), stack, callStack, Map.empty)
   }
 
   def call(
@@ -40,7 +56,11 @@ object Runtime {
           Some(idx)
       func = runtime.store.funcs(funcIdx)
       _ = runtime.stack.pushAll(args)
-      result <- invoke(runtime, func)
+      result <- func match
+        case f: FuncInst.InternalFuncInst =>
+          invoke(runtime, f)
+        case f: FuncInst.ExternalFuncInst =>
+          invokeExternal(runtime, f)
     yield result
 
   @tailrec
@@ -59,8 +79,18 @@ object Runtime {
 
       case Instruction.Call(funcIdx) =>
         val func = runtime.store.funcs(funcIdx)
-        pushFrame(runtime, func)
-        return execute(runtime) // little bit hacky.
+        func match
+          case f: FuncInst.InternalFuncInst =>
+            pushFrame(runtime, f)
+            return execute(runtime)
+          case f: FuncInst.ExternalFuncInst =>
+            val result = invokeExternal(runtime, f)
+            result match
+              case Some(v) =>
+                runtime.stack.push(v)
+                (runtime.stack, step(frame))
+              case None =>
+                return // TODO: error handling
 
       case Instruction.LocalGet(index) =>
         runtime.stack.push(frame.locals(index))
@@ -76,6 +106,19 @@ object Runtime {
 
       case Instruction.I32Const(x) =>
         runtime.stack.push(Value.I32(x))
+        (runtime.stack, step(frame))
+
+      case Instruction.I32Eqz =>
+        val a = runtime.stack.pop().asInstanceOf[Value.I32]
+        runtime.stack.push(Value.I32(if a.value == 0 then 1 else 0))
+        (runtime.stack, step(frame))
+
+      case Instruction.I32LE_U =>
+        val (a, b) = (
+          runtime.stack.pop().asInstanceOf[Value.I32],
+          runtime.stack.pop().asInstanceOf[Value.I32],
+        )
+        runtime.stack.push(Value.I32(if a.value <= b.value then 1 else 0))
         (runtime.stack, step(frame))
     }
 
@@ -98,7 +141,10 @@ object Runtime {
       for (_ <- 0 until sp) stack.pop()
       stack.push(result)
 
-  private def pushFrame(runtime: Runtime, func: FuncInst): Unit = {
+  private def pushFrame(
+      runtime: Runtime,
+      func: FuncInst.InternalFuncInst,
+  ): Unit = {
     val locals = mutable.Stack.empty[Value]
     for (_ <- func.typ.params.indices) locals.push(runtime.stack.pop())
 
@@ -122,7 +168,10 @@ object Runtime {
     runtime.callStack.push(frame)
   }
 
-  private def invoke(runtime: Runtime, func: FuncInst): Option[Value] = {
+  private def invoke(
+      runtime: Runtime,
+      func: FuncInst.InternalFuncInst,
+  ): Option[Value] = {
     val arity = func.typ.results.size
     pushFrame(runtime, func)
 
@@ -143,6 +192,19 @@ object Runtime {
     arity match
       case 0 => None
       case _ => Some(runtime.stack.pop())
+  }
+
+  private def invokeExternal(
+      runtime: Runtime,
+      func: FuncInst.ExternalFuncInst,
+  ): Option[Value] = {
+    val arity = func.funcType.params.size
+    val args = (0 until arity).map(_ => runtime.stack.pop()).toVector
+    val module = runtime.imports.get(func.module)
+
+    val importFunc = module.flatMap(_.get(func.func))
+
+    importFunc.flatMap(_.apply(runtime.store, args).get) // TODO: fix types
   }
 
   private def cleanup(runtime: Runtime) =

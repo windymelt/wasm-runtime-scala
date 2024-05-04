@@ -20,7 +20,9 @@ case class Store(
 
 // Func
 
-case class FuncInst(typ: FuncType, code: Func)
+enum FuncInst:
+  case InternalFuncInst(typ: FuncType, code: Func)
+  case ExternalFuncInst(module: String, func: String, funcType: FuncType)
 
 case class Func(locals: Vector[ValueType], body: Vector[Instruction])
 
@@ -53,7 +55,7 @@ object Store:
       .zip(funcTypeIdxs)
       .map { case (code, funcTypeIdx) =>
         val funcType = types(funcTypeIdx)
-        FuncInst(
+        FuncInst.InternalFuncInst(
           funcType,
           Func(code.locals.map(_._2), code.body),
         )
@@ -78,5 +80,13 @@ object Store:
       .map(imp => imp.module -> ImportInst(imp.field, imp.desc))
       .toMap
 
-    Store(funcs.toVector, ModuleInst(exports, imports))
+    val externalFuncs = imports.view.collect {
+      case (module, ImportInst(name, ImportDesc.Func(funcTypeIdx))) =>
+        FuncInst.ExternalFuncInst(module, name, types(funcTypeIdx))
+    }
+
+    Store(
+      funcs = (funcs ++ externalFuncs).toVector,
+      module = ModuleInst(exports, imports),
+    )
   }

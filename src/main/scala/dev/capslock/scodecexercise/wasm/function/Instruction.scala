@@ -13,6 +13,8 @@ enum OpCode(val code: Byte):
   case Call extends OpCode(0x10)
   case LocalGet extends OpCode(0x20)
   case I32Const extends OpCode(0x41)
+  case I32Eqz extends OpCode(0x45)
+  case I32LE_U extends OpCode(0x4d)
   case I32Add extends OpCode(0x6a)
 
 object OpCode:
@@ -21,6 +23,8 @@ object OpCode:
     case Call.code     => Call
     case LocalGet.code => LocalGet
     case I32Const.code => I32Const
+    case I32Eqz.code   => I32Eqz
+    case I32LE_U.code  => I32LE_U
     case I32Add.code   => I32Add
     case _ => throw new IllegalArgumentException(s"Unknown opcode: $byte")
 
@@ -31,6 +35,8 @@ enum Instruction(val code: OpCode):
   case Call(funcIdx: Int) extends Instruction(OpCode.Call)
   case LocalGet(index: Int) extends Instruction(OpCode.LocalGet)
   case I32Const(i32: Int) extends Instruction(OpCode.I32Const)
+  case I32Eqz extends Instruction(OpCode.I32Eqz)
+  case I32LE_U extends Instruction(OpCode.I32LE_U)
   case I32Add extends Instruction(OpCode.I32Add)
 
 object Instruction:
@@ -58,6 +64,10 @@ object Instruction:
           const <- Leb128.codecInt.encode(x) // XXX: I32 literal?
         yield op ++ const
 
+      case Instruction.I32Eqz => opEnc(OpCode.I32Eqz)
+
+      case Instruction.I32LE_U => opEnc(OpCode.I32LE_U)
+
       case Instruction.I32Add => opEnc(OpCode.I32Add)
   }
 
@@ -74,6 +84,7 @@ object Instruction:
     ): Attempt[DecodeResult[Instruction]] =
       opCode match
         case OpCode.End => Successful(DecodeResult(Instruction.End, bits))
+
         case op @ (OpCode.Call | OpCode.LocalGet | OpCode.I32Const) =>
           Leb128.codecInt
             .decode(bits)
@@ -85,6 +96,12 @@ object Instruction:
                   DecodeResult(Instruction.LocalGet(x.value), x.remainder)
                 case OpCode.I32Const =>
                   DecodeResult(Instruction.I32Const(x.value), x.remainder)
+
+        case OpCode.I32Eqz =>
+          Successful(DecodeResult(Instruction.I32Eqz, bits))
+
+        case OpCode.I32LE_U =>
+          Successful(DecodeResult(Instruction.I32LE_U, bits))
 
         case OpCode.I32Add => Successful(DecodeResult(Instruction.I32Add, bits))
   }
