@@ -8,9 +8,7 @@ import scodec.codecs.*
 case class CodeSection(functions: Vector[Function]) extends SectionPayload
 
 object CodeSection:
-  def codecWithSize(size: Int): Codec[CodeSection] = {
-    fixedSizeBytes(
-      size,
-      vectorOfN(Leb128.codecInt, Function.codec),
-    ).as[CodeSection]
-  }
+  def codecWithSize(size: Int): Codec[CodeSection] = fixedSizeBytes(
+    size,
+    vectorOfN(Leb128.codecInt, Function.codec),
+  ).as[CodeSection]

@@ -9,7 +9,7 @@ case class Section(header: SectionHeader, payload: SectionPayload)
 
 object Section:
   val codec: Codec[Section] = SectionHeader.codec
-    .>>~ {
+    .flatZip {
       case header @ SectionHeader(SectionCode.TypeSection, size) =>
         s"typeSection($size bytes)" | sections.TypeSection
           .codecWithSize(size.toInt)
@@ -32,4 +32,4 @@ object Section:
     }
     .as[Section]
 
-  val codecAll = codecs.vector(codec)
+  val codecAll: Codec[Vector[Section]] = codecs.vector(codec)
