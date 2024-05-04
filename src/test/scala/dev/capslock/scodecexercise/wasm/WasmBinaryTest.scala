@@ -168,4 +168,19 @@ class WasmBinaryTest extends UnitTest:
       val result = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       println(result)
     }
+
+    it("should parse import section") {
+      val wasmBinary = wat2wasm("""
+        | (module
+        |  (import "env" "double" (func $double (param i32) (result i32)))
+        |  (func (export "call_doubler") (param i32) (result i32)
+        |    (local.get 0)
+        |    (call $double)
+        |  )
+        |)
+        |""".stripMargin)
+
+      val result = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      println(result)
+    }
   }

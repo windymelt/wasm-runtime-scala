@@ -1,10 +1,17 @@
 package dev.capslock.scodecexercise.wasm
 package exec
 
-import sections.{CodeSection, FuncSection, TypeSection, ExportSection}
+import sections.{
+  CodeSection,
+  FuncSection,
+  TypeSection,
+  ExportSection,
+  ImportSection,
+}
 import types.{FuncType, ValueType}
 import function.Instruction
 import types.ExportDesc
+import types.ImportDesc
 
 case class Store(
     funcs: Vector[FuncInst],
@@ -19,8 +26,12 @@ case class Func(locals: Vector[ValueType], body: Vector[Instruction])
 
 // Module
 
-case class ModuleInst(exports: Map[String, ExportInst])
+case class ModuleInst(
+    exports: Map[String, ExportInst],
+    imports: Map[String, ImportInst],
+)
 case class ExportInst(name: String, desc: ExportDesc)
+case class ImportInst(name: String, desc: ImportDesc)
 
 object Store:
   def apply(wasmBinary: WasmBinary): Store = {
@@ -58,5 +69,14 @@ object Store:
       )
       .toMap
 
-    Store(funcs.toVector, ModuleInst(exports))
+    // Imports
+
+    val imports = wasmBinary.sections.view
+      .filter(_.header.sectionCode == SectionCode.ImportSection)
+      .map(_.payload.asInstanceOf[ImportSection])
+      .flatMap(_.imports)
+      .map(imp => imp.module -> ImportInst(imp.field, imp.desc))
+      .toMap
+
+    Store(funcs.toVector, ModuleInst(exports, imports))
   }
