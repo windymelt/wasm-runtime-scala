@@ -26,38 +26,31 @@ object Store:
   def apply(wasmBinary: WasmBinary): Store = {
     // Funcs
 
-    val funcTypeIdxs = wasmBinary.sections.find(
-      _.header.sectionCode == SectionCode.FunctionSection,
-    ) match
-      case Some(value) =>
-        value.payload.asInstanceOf[FuncSection].functionTypeIndices
-      case None => Vector.empty
+    val funcTypeIdxs = wasmBinary.sections
+      .filter(_.header.sectionCode == SectionCode.FunctionSection)
+      .flatMap(
+        _.payload.asInstanceOf[FuncSection].functionTypeIndices,
+      )
 
-    var funcs = collection.mutable.Seq.empty[FuncInst]
-    val types = wasmBinary.sections.find(
-      _.header.sectionCode == SectionCode.TypeSection,
-    ) match
-      case Some(value) => value.payload.asInstanceOf[TypeSection].types
-      case None        => Vector.empty
+    val types = wasmBinary.sections
+      .filter(_.header.sectionCode == SectionCode.TypeSection)
+      .flatMap(_.payload.asInstanceOf[TypeSection].types)
 
-    wasmBinary.sections.find(
-      _.header.sectionCode == SectionCode.CodeSection,
-    ) match
-      case Some(value) =>
-        val codeSection = value.payload.asInstanceOf[CodeSection]
-        codeSection.functions.zip(funcTypeIdxs).foreach {
-          case (code, funcTypeIdx) =>
-            val funcType = types(funcTypeIdx)
-            funcs = funcs :+ FuncInst(
-              funcType,
-              Func(code.locals.map(_._2), code.body),
-            )
-        }
-      case None => ???
+    val funcs = wasmBinary.sections.view
+      .filter(_.header.sectionCode == SectionCode.CodeSection)
+      .flatMap(_.payload.asInstanceOf[CodeSection].functions)
+      .zip(funcTypeIdxs)
+      .map { case (code, funcTypeIdx) =>
+        val funcType = types(funcTypeIdx)
+        FuncInst(
+          funcType,
+          Func(code.locals.map(_._2), code.body),
+        )
+      }
 
     // Exports
 
-    val exports = wasmBinary.sections
+    val exports = wasmBinary.sections.view
       .filter(_.header.sectionCode == SectionCode.ExportSection)
       .map(_.payload.asInstanceOf[ExportSection])
       .flatMap(sec =>

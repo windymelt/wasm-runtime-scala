@@ -11,7 +11,15 @@ case class Runtime(
     store: Store,
     stack: mutable.Stack[Value],
     callStack: mutable.Stack[Frame],
-)
+) {
+  override def toString: String =
+    s"""*** Runtime ***
+       |  stack:
+       |  ${stack.zipWithIndex.map((x, n) => s"$n: $x").mkString("\n    ")}
+       |  callStack:
+       |  ${callStack.zipWithIndex.mkString("\n    ")}
+       |""".stripMargin
+}
 
 object Runtime {
   def apply(wasmBinary: WasmBinary): Runtime = {
@@ -46,15 +54,12 @@ object Runtime {
 
     val (newStack, newFrame) = instruction match {
       case Instruction.End =>
-        val frame = runtime.callStack.pop()
         unwindStack(runtime.stack, frame.sp, frame.arity)
-        (runtime.stack, runtime.callStack.head)
+        return execute(runtime)
 
       case Instruction.Call(funcIdx) =>
         val func = runtime.store.funcs(funcIdx)
-        println(s"CALL: calling ${funcIdx}")
         pushFrame(runtime, func)
-        println(s"CALLSTACK(PUSHED): ${runtime.callStack}")
         return execute(runtime) // little bit hacky.
 
       case Instruction.LocalGet(index) =>
@@ -87,10 +92,10 @@ object Runtime {
       arity: Int,
   ) = arity match
     case 0 =>
-      for (_ <- 0 to sp) stack.pop()
+      for (_ <- 0 until sp) stack.pop()
     case _ =>
       val result = stack.pop()
-      for (_ <- 0 to sp) stack.pop()
+      for (_ <- 0 until sp) stack.pop()
       stack.push(result)
 
   private def pushFrame(runtime: Runtime, func: FuncInst): Unit = {

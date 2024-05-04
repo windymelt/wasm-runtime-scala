@@ -6,7 +6,7 @@ import dev.capslock.scodecexercise.wasm.util.Leb128
 import scodec.*
 import scodec.bits.*
 import scodec.codecs.*
-import types.ValueType
+import Attempt.Successful
 
 enum OpCode(val code: Byte):
   case End extends OpCode(0x0b)
@@ -35,48 +35,58 @@ enum Instruction(val code: OpCode):
 
 object Instruction:
   val encoder = new Encoder[Instruction] {
+    private def opEnc = OpCode.codec.encode
     override def sizeBound: SizeBound = SizeBound.unknown
     override def encode(value: Instruction): Attempt[BitVector] = value match
-      case Instruction.End => OpCode.codec.encode(OpCode.End)
+      case Instruction.End => opEnc(OpCode.End)
+
       case Instruction.Call(funcIdx) =>
         for
-          op <- OpCode.codec.encode(OpCode.Call)
+          op <- opEnc(OpCode.Call)
           func <- Leb128.codecInt.encode(funcIdx)
         yield op ++ func
+
       case Instruction.LocalGet(index) =>
-        OpCode.codec
-          .encode(OpCode.LocalGet)
-          .flatMap(op => Leb128.codecInt.encode(index).map(op ++ _))
+        for
+          op <- opEnc(OpCode.LocalGet)
+          idx <- Leb128.codecInt.encode(index)
+        yield op ++ idx
+
       case Instruction.I32Const(x) =>
         for
-          op <- OpCode.codec.encode(OpCode.I32Const)
+          op <- opEnc(OpCode.I32Const)
           const <- Leb128.codecInt.encode(x) // XXX: I32 literal?
         yield op ++ const
-      case Instruction.I32Add => OpCode.codec.encode(OpCode.I32Add)
+
+      case Instruction.I32Add => opEnc(OpCode.I32Add)
   }
 
   val decoder = new Decoder[Instruction] {
     override def decode(bits: BitVector): Attempt[DecodeResult[Instruction]] =
-      OpCode.codec.decode(bits).flatMap { opCode =>
-        opCode.value match
-          case OpCode.End =>
-            Attempt.successful(DecodeResult(Instruction.End, BitVector.empty))
-          case OpCode.Call =>
-            Leb128.codecInt.decode(opCode.remainder).map { funcIdx =>
-              DecodeResult(Instruction.Call(funcIdx.value), BitVector.empty)
-            }
-          case OpCode.LocalGet =>
-            Leb128.codecInt.decode(opCode.remainder).map { index =>
-              DecodeResult(Instruction.LocalGet(index.value), index.remainder)
-            }
-          case OpCode.I32Const =>
-            Leb128.codecInt.decode(opCode.remainder).map { x =>
-              DecodeResult(Instruction.I32Const(x.value), BitVector.empty)
-            }
-          case OpCode.I32Add =>
-            Attempt.successful(
-              DecodeResult(Instruction.I32Add, BitVector.empty),
-            )
-      }
+      for
+        op <- OpCode.codec.decode(bits)
+        rem <- remain(op.value, op.remainder)
+      yield rem
+
+    private def remain(
+        opCode: OpCode,
+        bits: BitVector,
+    ): Attempt[DecodeResult[Instruction]] =
+      opCode match
+        case OpCode.End => Successful(DecodeResult(Instruction.End, bits))
+        case op @ (OpCode.Call | OpCode.LocalGet | OpCode.I32Const) =>
+          Leb128.codecInt
+            .decode(bits)
+            .map: x =>
+              op match
+                case OpCode.Call =>
+                  DecodeResult(Instruction.Call(x.value), x.remainder)
+                case OpCode.LocalGet =>
+                  DecodeResult(Instruction.LocalGet(x.value), x.remainder)
+                case OpCode.I32Const =>
+                  DecodeResult(Instruction.I32Const(x.value), x.remainder)
+
+        case OpCode.I32Add => Successful(DecodeResult(Instruction.I32Add, bits))
   }
+
   val codec: Codec[Instruction] = Codec(encoder, decoder)

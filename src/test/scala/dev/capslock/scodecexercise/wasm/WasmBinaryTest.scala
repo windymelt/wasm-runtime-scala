@@ -88,6 +88,7 @@ class WasmBinaryTest extends UnitTest:
                     Instruction.LocalGet(0),
                     Instruction.LocalGet(1),
                     Instruction.I32Add,
+                    Instruction.End,
                   ),
                 ),
               ),
@@ -137,6 +138,7 @@ class WasmBinaryTest extends UnitTest:
                   Vector(),
                   Vector(
                     Instruction.I32Const(65535),
+                    Instruction.End,
                   ),
                 ),
               ),
