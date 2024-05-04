@@ -19,16 +19,8 @@ enum OpCode(val code: Byte):
   case I32Add extends OpCode(0x6a)
 
 object OpCode:
-  def fromByte(byte: Byte): OpCode = byte match
-    case End.code      => End
-    case Call.code     => Call
-    case LocalGet.code => LocalGet
-    case LocalSet.code => LocalSet
-    case I32Const.code => I32Const
-    case I32Eqz.code   => I32Eqz
-    case I32LE_U.code  => I32LE_U
-    case I32Add.code   => I32Add
-    case _ => throw new IllegalArgumentException(s"Unknown opcode: $byte")
+  private val opMap = OpCode.values.view.map(op => op.code -> op).toMap
+  def fromByte(byte: Byte): OpCode = opMap(byte)
 
   val codec: Codec[OpCode] = byte.xmap(fromByte, _.code)
 
@@ -42,12 +34,16 @@ enum Instruction(val code: OpCode):
   case I32LE_U extends Instruction(OpCode.I32LE_U)
   case I32Add extends Instruction(OpCode.I32Add)
 
+  def opEnc: Attempt[BitVector] = OpCode.codec.encode(code)
+
 object Instruction:
   val encoder = new Encoder[Instruction] {
     private def opEnc = OpCode.codec.encode
     override def sizeBound: SizeBound = SizeBound.unknown
     override def encode(value: Instruction): Attempt[BitVector] = value match
-      case Instruction.End => opEnc(OpCode.End)
+      case in @ (Instruction.End | Instruction.I32Eqz | Instruction.I32LE_U |
+          Instruction.I32Add) =>
+        in.opEnc
 
       case Instruction.Call(funcIdx) =>
         for
@@ -70,14 +66,8 @@ object Instruction:
       case Instruction.I32Const(x) =>
         for
           op <- opEnc(OpCode.I32Const)
-          const <- Leb128.codecInt.encode(x) // XXX: I32 literal?
+          const <- Leb128.codecInt.encode(x)
         yield op ++ const
-
-      case Instruction.I32Eqz => opEnc(OpCode.I32Eqz)
-
-      case Instruction.I32LE_U => opEnc(OpCode.I32LE_U)
-
-      case Instruction.I32Add => opEnc(OpCode.I32Add)
   }
 
   val decoder = new Decoder[Instruction] {
