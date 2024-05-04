@@ -12,6 +12,7 @@ enum OpCode(val code: Byte):
   case End extends OpCode(0x0b)
   case Call extends OpCode(0x10)
   case LocalGet extends OpCode(0x20)
+  case LocalSet extends OpCode(0x21)
   case I32Const extends OpCode(0x41)
   case I32Eqz extends OpCode(0x45)
   case I32LE_U extends OpCode(0x4d)
@@ -22,6 +23,7 @@ object OpCode:
     case End.code      => End
     case Call.code     => Call
     case LocalGet.code => LocalGet
+    case LocalSet.code => LocalSet
     case I32Const.code => I32Const
     case I32Eqz.code   => I32Eqz
     case I32LE_U.code  => I32LE_U
@@ -34,6 +36,7 @@ enum Instruction(val code: OpCode):
   case End extends Instruction(OpCode.End)
   case Call(funcIdx: Int) extends Instruction(OpCode.Call)
   case LocalGet(index: Int) extends Instruction(OpCode.LocalGet)
+  case LocalSet(index: Int) extends Instruction(OpCode.LocalSet)
   case I32Const(i32: Int) extends Instruction(OpCode.I32Const)
   case I32Eqz extends Instruction(OpCode.I32Eqz)
   case I32LE_U extends Instruction(OpCode.I32LE_U)
@@ -55,6 +58,12 @@ object Instruction:
       case Instruction.LocalGet(index) =>
         for
           op <- opEnc(OpCode.LocalGet)
+          idx <- Leb128.codecInt.encode(index)
+        yield op ++ idx
+
+      case Instruction.LocalSet(index) =>
+        for
+          op <- opEnc(OpCode.LocalSet)
           idx <- Leb128.codecInt.encode(index)
         yield op ++ idx
 
@@ -85,7 +94,8 @@ object Instruction:
       opCode match
         case OpCode.End => Successful(DecodeResult(Instruction.End, bits))
 
-        case op @ (OpCode.Call | OpCode.LocalGet | OpCode.I32Const) =>
+        case op @ (OpCode.Call | OpCode.LocalGet | OpCode.LocalSet |
+            OpCode.I32Const) =>
           Leb128.codecInt
             .decode(bits)
             .map: x =>
@@ -94,6 +104,8 @@ object Instruction:
                   DecodeResult(Instruction.Call(x.value), x.remainder)
                 case OpCode.LocalGet =>
                   DecodeResult(Instruction.LocalGet(x.value), x.remainder)
+                case OpCode.LocalSet =>
+                  DecodeResult(Instruction.LocalSet(x.value), x.remainder)
                 case OpCode.I32Const =>
                   DecodeResult(Instruction.I32Const(x.value), x.remainder)
 

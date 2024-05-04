@@ -96,6 +96,12 @@ object Runtime {
         runtime.stack.push(frame.locals(index))
         (runtime.stack, step(frame))
 
+      case Instruction.LocalSet(index) =>
+        val x = runtime.stack.pop()
+        // TODO: make locals mutable for performance
+        val newFrame = frame.copy(locals = frame.locals.updated(index, x))
+        (runtime.stack, step(newFrame))
+
       case Instruction.I32Add =>
         val (a, b) = (
           runtime.stack.pop().asInstanceOf[Value.I32],
