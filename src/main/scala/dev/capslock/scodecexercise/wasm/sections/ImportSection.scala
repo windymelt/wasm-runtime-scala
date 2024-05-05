@@ -9,7 +9,7 @@ import scodec.codecs.*
 case class ImportSection(imports: Vector[Import]) extends SectionPayload
 
 object ImportSection:
-  def codecWithSize(size: Int) = fixedSizeBytes(
+  def codecWithSize(size: Int): Codec[ImportSection] = fixedSizeBytes(
     size,
     vectorOfN(Leb128.codecInt, Import.codec),
   ).as[ImportSection]

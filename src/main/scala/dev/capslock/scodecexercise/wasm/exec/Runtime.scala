@@ -110,6 +110,9 @@ object Runtime {
         runtime.stack.push(Value.I32(a.value + b.value))
         (runtime.stack, step(frame))
 
+      case Instruction.I32Store(align, offset) =>
+        ???
+
       case Instruction.I32Const(x) =>
         runtime.stack.push(Value.I32(x))
         (runtime.stack, step(frame))

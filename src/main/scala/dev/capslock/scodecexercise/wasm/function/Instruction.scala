@@ -13,6 +13,7 @@ enum OpCode(val code: Byte):
   case Call     extends OpCode(0x10)
   case LocalGet extends OpCode(0x20)
   case LocalSet extends OpCode(0x21)
+  case I32Store extends OpCode(0x36)
   case I32Const extends OpCode(0x41)
   case I32Eqz   extends OpCode(0x45)
   case I32LE_U  extends OpCode(0x4d)
@@ -25,14 +26,15 @@ object OpCode:
   val codec: Codec[OpCode] = byte.xmap(fromByte, _.code)
 
 enum Instruction(val code: OpCode):
-  case End                  extends Instruction(OpCode.End)
-  case Call(funcIdx: Int)   extends Instruction(OpCode.Call)
-  case LocalGet(index: Int) extends Instruction(OpCode.LocalGet)
-  case LocalSet(index: Int) extends Instruction(OpCode.LocalSet)
-  case I32Const(i32: Int)   extends Instruction(OpCode.I32Const)
-  case I32Eqz               extends Instruction(OpCode.I32Eqz)
-  case I32LE_U              extends Instruction(OpCode.I32LE_U)
-  case I32Add               extends Instruction(OpCode.I32Add)
+  case End                               extends Instruction(OpCode.End)
+  case Call(funcIdx: Int)                extends Instruction(OpCode.Call)
+  case LocalGet(index: Int)              extends Instruction(OpCode.LocalGet)
+  case LocalSet(index: Int)              extends Instruction(OpCode.LocalSet)
+  case I32Store(align: Int, offset: Int) extends Instruction(OpCode.I32Store)
+  case I32Const(i32: Int)                extends Instruction(OpCode.I32Const)
+  case I32Eqz                            extends Instruction(OpCode.I32Eqz)
+  case I32LE_U                           extends Instruction(OpCode.I32LE_U)
+  case I32Add                            extends Instruction(OpCode.I32Add)
 
   def opEnc: Attempt[BitVector] = OpCode.codec.encode(code)
 
@@ -62,6 +64,13 @@ object Instruction:
           op  <- opEnc(OpCode.LocalSet)
           idx <- Leb128.codecInt.encode(index)
         yield op ++ idx
+
+      case Instruction.I32Store(align, offset) =>
+        for
+          op     <- opEnc(OpCode.I32Store)
+          align  <- Leb128.codecInt.encode(align)
+          offset <- Leb128.codecInt.encode(offset)
+        yield op ++ align ++ offset
 
       case Instruction.I32Const(x) =>
         for
@@ -98,6 +107,15 @@ object Instruction:
                   DecodeResult(Instruction.LocalSet(x.value), x.remainder)
                 case OpCode.I32Const =>
                   DecodeResult(Instruction.I32Const(x.value), x.remainder)
+
+        case OpCode.I32Store =>
+          for
+            align  <- Leb128.codecInt.decode(bits)
+            offset <- Leb128.codecInt.decode(align.remainder)
+          yield DecodeResult(
+            Instruction.I32Store(align.value, offset.value),
+            offset.remainder,
+          )
 
         case OpCode.I32Eqz =>
           Successful(DecodeResult(Instruction.I32Eqz, bits))

@@ -169,6 +169,15 @@ class WasmBinaryTest extends UnitTest:
       println(result)
     }
 
+    it("should parse i32.store") {
+      val wasmBinary = wat2wasm("""
+        | (module (memory 1) (func (i32.store (i32.const 0) (i32.const 42))))
+        |""".stripMargin)
+
+      val result = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      println(result)
+    }
+
     it("should parse import section") {
       val wasmBinary = wat2wasm("""
         | (module
