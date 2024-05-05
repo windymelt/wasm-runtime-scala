@@ -111,7 +111,14 @@ object Runtime {
         (runtime.stack, step(frame))
 
       case Instruction.I32Store(align, offset) =>
-        ???
+        import scodec.codecs.int32
+        val (value, addr) = (
+          runtime.stack.pop().asInstanceOf[Value.I32],
+          runtime.stack.pop().asInstanceOf[Value.I32],
+        )
+        val binary = int32.encode(value.value).require.bytes.toArray
+        binary.copyToArray(runtime.store.memories(0).data, addr.value + offset)
+        (runtime.stack, step(frame))
 
       case Instruction.I32Const(x) =>
         runtime.stack.push(Value.I32(x))

@@ -178,4 +178,25 @@ class RuntimeTest extends UnitTest:
         Runtime.call(runtime, "call_add", Vector(Value.I32(42), Value.I32(42)))
       result shouldBe None
     }
+
+    it("can store into memory") {
+      import scodec.codecs.int32
+
+      val wasmBinary = wat2wasm("""
+            |(module
+            |  (memory 1)
+            |  (func (export "store") (param i32)
+            |    (i32.store (i32.const 0) (local.get 0))
+            |  )
+            |)
+            |""".stripMargin)
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val runtime = Runtime(wasm)
+
+      val result = Runtime.call(runtime, "store", Vector(Value.I32(42)))
+
+      int32
+        .decodeValue(BitVector(runtime.store.memories.head.data.take(4)))
+        .require shouldBe 42
+    }
   }

@@ -8,6 +8,7 @@ import sections.{
   ImportSection,
   MemorySection,
   TypeSection,
+  DataSection,
 }
 import types.{FuncType, ValueType}
 import function.Instruction
@@ -39,7 +40,7 @@ case class ModuleInst(
 case class ExportInst(name: String, desc: ExportDesc)
 case class ImportInst(name: String, desc: ImportDesc)
 
-case class MemoryInst(data: Vector[Byte], max: Option[Int])
+case class MemoryInst(data: Array[Byte], max: Option[Int])
 
 object Store:
   def apply(wasmBinary: WasmBinary): Store = {
@@ -99,12 +100,23 @@ object Store:
       .flatMap(_.payload.asInstanceOf[MemorySection].mem)
       .map { memory =>
         val initialSize = memory.limits.min * MEMORY_PAGE_SIZE
-        MemoryInst(Vector.fill(initialSize)(0), memory.limits.max)
+        MemoryInst(Array.fill(initialSize)(0), memory.limits.max)
+      }
+      .toVector
+
+    // Place data into memory
+    wasmBinary.sections.view
+      .filter(_.header.sectionCode == SectionCode.DataSection)
+      .flatMap(_.payload.asInstanceOf[DataSection].data)
+      .foreach { data =>
+        val offset = data.offset
+        val memory = memories(data.memoryIndex)
+        data.init.copyToArray(memory.data, offset)
       }
 
     Store(
       funcs = (funcs ++ externalFuncs).toVector,
       module = ModuleInst(exports, imports),
-      memories = memories.toVector,
+      memories = memories,
     )
   }
