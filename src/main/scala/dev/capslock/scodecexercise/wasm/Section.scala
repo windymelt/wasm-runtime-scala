@@ -39,6 +39,11 @@ object Section:
         s"memorySection($size bytes)" | sections.MemorySection
           .codecWithSize(size.toInt)
           .upcast[SectionPayload]
+
+      case header @ SectionHeader(SectionCode.DataSection, size) =>
+        s"dataSection($size bytes)" | sections.DataSection
+          .codecWithSize(size.toInt)
+          .upcast[SectionPayload]
     }
     .as[Section]
 

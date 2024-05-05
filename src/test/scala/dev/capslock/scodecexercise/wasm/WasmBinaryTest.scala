@@ -201,4 +201,25 @@ class WasmBinaryTest extends UnitTest:
       val result = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       println(result)
     }
+
+    it("should parse data section") {
+      val wasmBinary = wat2wasm("""
+            |(module
+            |  (memory 1)
+            |  (data (i32.const 0) "hello, world")
+            |)
+            |""".stripMargin)
+
+      WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+
+      val wasmBinary2 = wat2wasm("""
+            |(module
+            |  (memory 1)
+            |  (data (i32.const 0) "hello")
+            |  (data (i32.const 5) "world")
+            |)
+            |""".stripMargin)
+
+      WasmBinary.codec.decodeValue(BitVector(wasmBinary2)).require
+    }
   }
