@@ -214,8 +214,16 @@ object Runtime {
       runtime: Runtime,
       func: FuncInst.ExternalFuncInst,
   ): Option[Value] = {
-    val arity  = func.funcType.params.size
-    val args   = (0 until arity).map(_ => runtime.stack.pop()).toVector
+    val arity = func.funcType.params.size
+    val args =
+      (0 until arity).map(_ => runtime.stack.pop()).reverseIterator.toVector
+
+    // WASI
+    if func.module == "wasi_snapshot_preview1" then
+      return wasi.WasiSnapshotPreview1
+        .invoke(runtime.store, func.func, args)
+        .get
+
     val module = runtime.imports.get(func.module)
 
     val importFunc = module.flatMap(_.get(func.func))

@@ -56,16 +56,19 @@ object Store:
       .filter(_.header.sectionCode == SectionCode.TypeSection)
       .flatMap(_.payload.asInstanceOf[TypeSection].types)
 
-    val funcs = wasmBinary.sections.view
-      .filter(_.header.sectionCode == SectionCode.CodeSection)
-      .flatMap(_.payload.asInstanceOf[CodeSection].functions)
+    // Keeping the order of section because function index is based on the order of function section
+    val funcs = wasmBinary.sections.view.zipWithIndex
+      .filter(_._1.header.sectionCode == SectionCode.CodeSection)
+      .flatMap((f, i) =>
+        f.payload.asInstanceOf[CodeSection].functions.map(_ -> i),
+      )
       .zip(funcTypeIdxs)
-      .map { case (code, funcTypeIdx) =>
+      .map { case ((code, i), funcTypeIdx) =>
         val funcType = types(funcTypeIdx)
         FuncInst.InternalFuncInst(
           funcType,
           Func(code.locals.map(_._2), code.body),
-        )
+        ) -> i
       }
 
     // Exports
@@ -80,16 +83,26 @@ object Store:
 
     // Imports
 
-    val imports = wasmBinary.sections.view
-      .filter(_.header.sectionCode == SectionCode.ImportSection)
-      .map(_.payload.asInstanceOf[ImportSection])
-      .flatMap(_.imports)
-      .map(imp => imp.module -> ImportInst(imp.field, imp.desc))
-      .toMap
+    // Keeping the order of section because function index is based on the order of function section
+    val imports = wasmBinary.sections.view.zipWithIndex
+      .filter(_._1.header.sectionCode == SectionCode.ImportSection)
+      .map((f, i) => f.payload.asInstanceOf[ImportSection] -> i)
+      .flatMap((f, i) => f.imports.map(_ -> i))
+      .map((imp, i) => (imp.module, ImportInst(imp.field, imp.desc), i))
 
-    val externalFuncs = imports.view.collect {
-      case (module, ImportInst(name, ImportDesc.Func(funcTypeIdx))) =>
-        FuncInst.ExternalFuncInst(module, name, types(funcTypeIdx))
+    val importMap = imports.map((k, v, i) => k -> v).toMap
+
+    val externalFuncs = imports.collect {
+      case (
+            module,
+            ImportInst(name, ImportDesc.Func(funcTypeIdx)),
+            orderOfSection,
+          ) =>
+        FuncInst.ExternalFuncInst(
+          module,
+          name,
+          types(funcTypeIdx),
+        ) -> orderOfSection
     }
 
     // Memories
@@ -114,9 +127,11 @@ object Store:
         data.init.copyToArray(memory.data, offset)
       }
 
+    val sortedFuncs = (funcs ++ externalFuncs).toSeq.sortBy(_._2).map(_._1)
+
     Store(
-      funcs = (funcs ++ externalFuncs).toVector,
-      module = ModuleInst(exports, imports),
+      funcs = sortedFuncs.toVector,
+      module = ModuleInst(exports, importMap),
       memories = memories,
     )
   }

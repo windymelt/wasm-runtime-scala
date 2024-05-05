@@ -112,8 +112,8 @@ class RuntimeTest extends UnitTest:
     it("can call external function") {
       val wasmBinary = wat2wasm("""
             |(module
-            |  (import "env" "add" (func $add (param i32 i32)))
-            |  (func (export "call_add") (param i32 i32)
+            |  (import "env" "add" (func $add (param i32 i32) (result i32)))
+            |  (func (export "call_add") (param i32 i32) (result i32)
             |    (local.get 0)
             |    (local.get 1)
             |    (call $add)
@@ -198,5 +198,41 @@ class RuntimeTest extends UnitTest:
       int32
         .decodeValue(BitVector(runtime.store.memories.head.data.take(4)))
         .require shouldBe 42
+    }
+
+    it("can call fd_write via WASI") {
+      val wasmBinary = wat2wasm("""
+          |(module
+          |  (import "wasi_snapshot_preview1" "fd_write"
+          |    (func $fd_write (param i32 i32 i32 i32) (result i32))
+          |  )
+          |  (memory 1)
+          |  (data (i32.const 0) "Hello, World via WASI!\n")
+          |
+          |  (func $hello_world (result i32)
+          |    (local $iovs i32)
+          |
+          |    (i32.store (i32.const 24) (i32.const 0))
+          |    (i32.store (i32.const 28) (i32.const 23))
+          |
+          |    (local.set $iovs (i32.const 24))
+          |
+          |    (call $fd_write
+          |      (i32.const 1)
+          |      (local.get $iovs)
+          |      (i32.const 1)
+          |      (i32.const 32)
+          |    )
+          |  )
+          |  (export "_start" (func $hello_world))
+          |)
+          |""".stripMargin)
+
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val runtime = Runtime(wasm)
+
+      val result = Runtime.call(runtime, "_start", Vector.empty)
+
+      result shouldBe Some(Value.I32(0))
     }
   }
