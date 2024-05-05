@@ -3,19 +3,23 @@ package exec
 
 import sections.{
   CodeSection,
-  FuncSection,
-  TypeSection,
   ExportSection,
+  FuncSection,
   ImportSection,
+  MemorySection,
+  TypeSection,
 }
 import types.{FuncType, ValueType}
 import function.Instruction
 import types.ExportDesc
 import types.ImportDesc
 
+val MEMORY_PAGE_SIZE = 65536 // 64 Ki. specified in WebAssembly spec
+
 case class Store(
     funcs: Vector[FuncInst],
     module: ModuleInst,
+    memories: Vector[MemoryInst],
 )
 
 // Func
@@ -34,6 +38,8 @@ case class ModuleInst(
 )
 case class ExportInst(name: String, desc: ExportDesc)
 case class ImportInst(name: String, desc: ImportDesc)
+
+case class MemoryInst(data: Vector[Byte], max: Option[Int])
 
 object Store:
   def apply(wasmBinary: WasmBinary): Store = {
@@ -85,8 +91,20 @@ object Store:
         FuncInst.ExternalFuncInst(module, name, types(funcTypeIdx))
     }
 
+    // Memories
+
+    // Allocate memory with initial size
+    val memories = wasmBinary.sections.view
+      .filter(_.header.sectionCode == SectionCode.MemorySection)
+      .flatMap(_.payload.asInstanceOf[MemorySection].mem)
+      .map { memory =>
+        val initialSize = memory.limits.min * MEMORY_PAGE_SIZE
+        MemoryInst(Vector.fill(initialSize)(0), memory.limits.max)
+      }
+
     Store(
       funcs = (funcs ++ externalFuncs).toVector,
       module = ModuleInst(exports, imports),
+      memories = memories.toVector,
     )
   }
