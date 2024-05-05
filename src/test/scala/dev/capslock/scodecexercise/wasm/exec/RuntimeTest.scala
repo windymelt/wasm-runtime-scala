@@ -19,7 +19,7 @@ class RuntimeTest extends UnitTest:
           |  )
           |)
           |""".stripMargin)
-      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
       val cases = Seq(
@@ -43,7 +43,7 @@ class RuntimeTest extends UnitTest:
           |  )
           |)
           |""".stripMargin)
-      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
       val result = Runtime.call(runtime, "satanist", Vector.empty)
@@ -61,7 +61,7 @@ class RuntimeTest extends UnitTest:
           |  (export "local_set" (func $local_set))
           |)
           |""".stripMargin)
-      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
       val result = Runtime.call(runtime, "local_set", Vector.empty)
@@ -83,7 +83,7 @@ class RuntimeTest extends UnitTest:
       |)
       |""".stripMargin)
 
-      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
       val result = Runtime.call(runtime, "call_doubler", Vector(Value.I32(42)))
@@ -98,7 +98,7 @@ class RuntimeTest extends UnitTest:
           |  )
           |)
           |""".stripMargin)
-      val wasm = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
+      val wasm    = WasmBinary.codec.decodeValue(BitVector(wasmBinary)).require
       val runtime = Runtime(wasm)
 
       val result = Runtime.call(

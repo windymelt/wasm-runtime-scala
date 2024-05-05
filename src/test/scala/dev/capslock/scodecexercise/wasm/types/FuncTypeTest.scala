@@ -6,7 +6,7 @@ import scodec.bits.hex
 class FuncTypeTest extends UnitTest:
   describe("FuncType") {
     it("should decode") {
-      val bytes = hex"60 02 7f 7f 01 7e".bits
+      val bytes    = hex"60 02 7f 7f 01 7e".bits
       val funcType = FuncType.codec.decode(bytes).require.value
       funcType shouldBe FuncType(
         Vector(ValueType.I32, ValueType.I32),

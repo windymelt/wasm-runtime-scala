@@ -13,7 +13,7 @@ object Leb128:
         throw new IllegalArgumentException("LEB128 can't encode negative value")
       }
       val buffer = scala.collection.mutable.ArrayBuffer[Byte]()
-      var v = value
+      var v      = value
       while (v != 0) {
         var byte = (v & 0x7f).toByte
         v >>= 7
@@ -28,8 +28,8 @@ object Leb128:
     def decode(bits: BitVector) = {
       var value = 0L
       var shift = 0
-      var byte = 0
-      var i = 0
+      var byte  = 0
+      var i     = 0
       while {
         if (i >= bits.bytes.size) {
           false

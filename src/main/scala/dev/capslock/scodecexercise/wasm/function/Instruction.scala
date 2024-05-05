@@ -9,14 +9,14 @@ import scodec.codecs.*
 import Attempt.Successful
 
 enum OpCode(val code: Byte):
-  case End extends OpCode(0x0b)
-  case Call extends OpCode(0x10)
+  case End      extends OpCode(0x0b)
+  case Call     extends OpCode(0x10)
   case LocalGet extends OpCode(0x20)
   case LocalSet extends OpCode(0x21)
   case I32Const extends OpCode(0x41)
-  case I32Eqz extends OpCode(0x45)
-  case I32LE_U extends OpCode(0x4d)
-  case I32Add extends OpCode(0x6a)
+  case I32Eqz   extends OpCode(0x45)
+  case I32LE_U  extends OpCode(0x4d)
+  case I32Add   extends OpCode(0x6a)
 
 object OpCode:
   private val opMap = OpCode.values.view.map(op => op.code -> op).toMap
@@ -25,20 +25,20 @@ object OpCode:
   val codec: Codec[OpCode] = byte.xmap(fromByte, _.code)
 
 enum Instruction(val code: OpCode):
-  case End extends Instruction(OpCode.End)
-  case Call(funcIdx: Int) extends Instruction(OpCode.Call)
+  case End                  extends Instruction(OpCode.End)
+  case Call(funcIdx: Int)   extends Instruction(OpCode.Call)
   case LocalGet(index: Int) extends Instruction(OpCode.LocalGet)
   case LocalSet(index: Int) extends Instruction(OpCode.LocalSet)
-  case I32Const(i32: Int) extends Instruction(OpCode.I32Const)
-  case I32Eqz extends Instruction(OpCode.I32Eqz)
-  case I32LE_U extends Instruction(OpCode.I32LE_U)
-  case I32Add extends Instruction(OpCode.I32Add)
+  case I32Const(i32: Int)   extends Instruction(OpCode.I32Const)
+  case I32Eqz               extends Instruction(OpCode.I32Eqz)
+  case I32LE_U              extends Instruction(OpCode.I32LE_U)
+  case I32Add               extends Instruction(OpCode.I32Add)
 
   def opEnc: Attempt[BitVector] = OpCode.codec.encode(code)
 
 object Instruction:
   val encoder = new Encoder[Instruction] {
-    private def opEnc = OpCode.codec.encode
+    private def opEnc                 = OpCode.codec.encode
     override def sizeBound: SizeBound = SizeBound.unknown
     override def encode(value: Instruction): Attempt[BitVector] = value match
       case in @ (Instruction.End | Instruction.I32Eqz | Instruction.I32LE_U |
@@ -47,25 +47,25 @@ object Instruction:
 
       case Instruction.Call(funcIdx) =>
         for
-          op <- opEnc(OpCode.Call)
+          op   <- opEnc(OpCode.Call)
           func <- Leb128.codecInt.encode(funcIdx)
         yield op ++ func
 
       case Instruction.LocalGet(index) =>
         for
-          op <- opEnc(OpCode.LocalGet)
+          op  <- opEnc(OpCode.LocalGet)
           idx <- Leb128.codecInt.encode(index)
         yield op ++ idx
 
       case Instruction.LocalSet(index) =>
         for
-          op <- opEnc(OpCode.LocalSet)
+          op  <- opEnc(OpCode.LocalSet)
           idx <- Leb128.codecInt.encode(index)
         yield op ++ idx
 
       case Instruction.I32Const(x) =>
         for
-          op <- opEnc(OpCode.I32Const)
+          op    <- opEnc(OpCode.I32Const)
           const <- Leb128.codecInt.encode(x)
         yield op ++ const
   }
@@ -73,7 +73,7 @@ object Instruction:
   val decoder = new Decoder[Instruction] {
     override def decode(bits: BitVector): Attempt[DecodeResult[Instruction]] =
       for
-        op <- OpCode.codec.decode(bits)
+        op  <- OpCode.codec.decode(bits)
         rem <- remain(op.value, op.remainder)
       yield rem
 

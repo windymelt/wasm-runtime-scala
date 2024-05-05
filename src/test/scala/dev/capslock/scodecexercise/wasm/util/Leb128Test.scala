@@ -7,7 +7,7 @@ import scodec.bits.BitVector
 class Leb128Test extends UnitTest:
   describe("LEB128") {
     it("should encode 1") {
-      val encoded = Leb128.codec.encode(1).require
+      val encoded  = Leb128.codec.encode(1).require
       val expected = BitVector(Array[Byte](0x01.toByte))
       encoded shouldBe expected
 
@@ -15,7 +15,7 @@ class Leb128Test extends UnitTest:
       decoded shouldBe 1
     }
     it("should encode 127") {
-      val encoded = Leb128.codec.encode(127).require
+      val encoded  = Leb128.codec.encode(127).require
       val expected = BitVector(Array[Byte](0x7f.toByte))
       encoded shouldBe expected
 
@@ -23,7 +23,7 @@ class Leb128Test extends UnitTest:
       decoded shouldBe 127
     }
     it("should encode 130") {
-      val encoded = Leb128.codec.encode(130).require
+      val encoded  = Leb128.codec.encode(130).require
       val expected = BitVector(Array[Byte](0x82.toByte, 0x01.toByte))
       encoded shouldBe expected
 
@@ -43,7 +43,7 @@ class Leb128Test extends UnitTest:
 
   describe("LEB128.codecInt") {
     it("should encode 127") {
-      val encoded = Leb128.codecInt.encode(127).require
+      val encoded  = Leb128.codecInt.encode(127).require
       val expected = BitVector(Array[Byte](0x7f.toByte))
       encoded shouldBe expected
 
